@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Research Publication Reporting &amp; Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --violet-dark:  #6a1b9a;
+      --violet-deep:  #4a148c;
+      --violet-light: #f3e5f5;
+      --violet-soft:  #e1bee7;
+      --text-dark:    #2c3e50;
+      --text-mute:    #5a6b7b;
+      --border:       #e2eaf2;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f7fc;
+      margin: 0;
+      padding: 20px;
+      color: var(--text-dark);
+    }
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      background: #fff;
+      padding: 28px 32px;
+      border-radius: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    }
+
+    /* ---------- Header ---------- */
+    .header {
+      background: var(--violet-dark);
+      color: #fff;
+      padding: 22px 26px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 12px rgba(106, 27, 154, 0.28);
+    }
+    .logo {
+      height: 70px;
+      width: 70px;
+      object-fit: contain;
+      background: #fff;
+      border-radius: 50%;
+      padding: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      flex-shrink: 0;
+    }
+    .header h1 { color: #fff; margin: 0 0 4px 0; font-size: 22px; letter-spacing: 0.3px; }
+    .header .subtitle { color: var(--violet-light); margin: 0; font-size: 14px; }
+
+    /* ---------- Tabs ---------- */
+    .tabs { display: flex; gap: 8px; margin-bottom: 22px; border-bottom: 2px solid var(--border); }
+    .tab-btn {
+      padding: 12px 22px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-mute);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: -2px;
+    }
+    .tab-btn:hover  { color: var(--violet-dark); }
+    .tab-btn.active { color: var(--violet-dark); border-bottom-color: var(--violet-dark); }
+    .tab-panel        { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ---------- Section headings ---------- */
+    .section-title {
+      background: var(--violet-dark);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0 0 12px 0;
+      letter-spacing: 0.3px;
+      box-shadow: 0 2px 6px rgba(106, 27, 154, 0.2);
+    }
+    .section-note {
+      background: var(--violet-light);
+      border-left: 4px solid var(--violet-dark);
+      color: var(--violet-deep);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      margin: 0 0 20px 0;
+      line-height: 1.55;
+    }
+    .section-note strong { color: var(--violet-dark); }
+
+    /* ---------- Form ---------- */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .full-width { grid-column: 1 / -1; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; color: var(--text-dark); font-size: 14px; }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ccd6e0;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #fafbfc;
+      transition: border 0.2s, background 0.2s, box-shadow 0.2s;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--violet-dark);
+      outline: none;
+      background: #fff;
+      box-shadow: 0 0 0 3px var(--violet-light);
+    }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .btn-submit {
+      grid-column: 1 / -1;
+      padding: 14px;
+      background: var(--violet-dark);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      letter-spacing: 0.3px;
+    }
+    .btn-submit:hover    { background: var(--violet-deep); }
+    .btn-submit:disabled { background: #b39ddb; cursor: not-allowed; }
+
+    #message { text-align: center; margin-top: 16px; font-weight: 600; }
+    .success { color: #1e8449; }
+    .error   { color: #c0392b; }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 3px solid #fff;
+      border-top-color: var(--violet-deep);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---------- Dashboard ---------- */
+    .dashboard-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .dashboard-controls button {
+      padding: 10px;
+      background: var(--violet-dark);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      align-self: end;
+      transition: background 0.2s;
+    }
+    .dashboard-controls button:hover { background: var(--violet-deep); }
+    .dashboard-controls button.debug-btn { background: #34495e; }
+    .dashboard-controls button.debug-btn:hover { background: #22303e; }
+
+    .stats-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, var(--violet-light), #fff);
+      border: 1px solid var(--violet-soft);
+      border-radius: 10px;
+      padding: 18px;
+      text-align: center;
+    }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--violet-dark); }
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-mute);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 420px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .empty-msg {
+      text-align: center;
+      color: #7f8c9c;
+      padding: 40px 10px;
+      font-style: italic;
+    }
+
+    .filter-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: -6px 0 16px 0;
+      min-height: 0;
+    }
+    .filter-pill {
+      background: var(--violet-light);
+      color: var(--violet-deep);
+      border: 1px solid var(--violet-soft);
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    #debugBox {
+      display: none;
+      margin-top: 16px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border-radius: 8px;
+      padding: 14px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .header    { flex-direction: column; text-align: center; }
+      .logo      { height: 60px; width: 60px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <img class="logo"
+         src="https://drive.google.com/thumbnail?id=18sSFnKOAb9EndSIv1JNYSZWSkCQdbg6r&sz=w400"
+         alt="College Logo"
+         referrerpolicy="no-referrer"
+         onerror="this.style.display='none'">
+    <div>
+      <h1>Research Publication Reporting &amp; Tracking</h1>
+      <p class="subtitle">College of Health Medicine and Health Sciences &mdash; Wollo University</p>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="formTab">📝 New Report</button>
+    <button class="tab-btn"        data-tab="dashboardTab">📊 Dashboard</button>
+  </div>
+
+  <!-- ============ TAB 1: FORM ============ -->
+  <div id="formTab" class="tab-panel active">
+    <div class="section-title">Report a Publication</div>
+
+    <form id="publicationForm">
+      <div class="form-grid">
+
+        <div>
+          <label for="department">Department / Unit *</label>
+          <select id="department" name="department" required><option value="">-- Loading --</option></select>
+        </div>
+
+        <div>
+          <label for="staffName">Staff Full Name *</label>
+          <input type="text" id="staffName" name="staffName"
+                 placeholder="e.g., Dr. Abebe Kebede" required>
+        </div>
+
+        <div>
+          <label for="academicRank">Academic Rank *</label>
+          <select id="academicRank" name="academicRank" required><option value="">-- Loading --</option></select>
+        </div>
+
+        <div>
+          <label for="academicQualification">Academic Qualification *</label>
+          <select id="academicQualification" name="academicQualification" required>
+            <option value="">-- Loading --</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="authorship">Authorship Position *</label>
+          <select id="authorship" name="authorship" required><option value="">-- Loading --</option></select>
+        </div>
+
+        <div>
+          <label for="journal">Journal / Conference *</label>
+          <input type="text" id="journal" name="journal"
+                 placeholder="e.g., Ethiopian Journal of Health Sciences" required>
+        </div>
+
+        <div class="full-width">
+          <label for="publicationTitle">Publication Title *</label>
+          <input type="text" id="publicationTitle" name="publicationTitle"
+                 placeholder="Full title of the publication" required>
+        </div>
+
+        <div>
+          <label for="publicationDate">Publication Date *</label>
+          <input type="date" id="publicationDate" name="publicationDate"
+                 min="1990-01-01" max="2099-12-31" required>
+        </div>
+
+        <div>
+          <label for="doiLink">DOI / Link</label>
+          <input type="url" id="doiLink" name="doiLink" placeholder="https://doi.org/...">
+        </div>
+
+        <div>
+          <label for="indexedIn">Indexed In</label>
+          <select id="indexedIn" name="indexedIn"><option value="">-- Loading --</option></select>
+        </div>
+
+        <div>
+          <label for="status">Status</label>
+          <select id="status" name="status"><option value="">-- Loading --</option></select>
+        </div>
+
+        <div class="full-width">
+          <label for="remarks">Remarks</label>
+          <textarea id="remarks" name="remarks" placeholder="Any additional notes..."></textarea>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">Submit Publication</button>
+      </div>
+    </form>
+    <div id="message"></div>
+  </div>
+
+  <!-- ============ TAB 2: DASHBOARD ============ -->
+  <div id="dashboardTab" class="tab-panel">
+    <div class="section-title">Publication Analytics Dashboard</div>
+
+    <div class="section-note">
+      <strong>Ethiopian fiscal quarters:</strong>
+      Q1 = Jul–Sep &nbsp;•&nbsp; Q2 = Oct–Dec &nbsp;•&nbsp;
+      Q3 = Jan–Mar &nbsp;•&nbsp; Q4 = Apr–Jun.
+      Use the <strong>Quarter filter</strong> together with the Department filter to scope
+      all charts and stats. If nothing appears, click <strong>🔍 Debug</strong>.
+    </div>
+
+    <div class="dashboard-controls">
+      <div>
+        <label for="groupBy">Group By</label>
+        <select id="groupBy">
+          <option value="department">Department</option>
+          <option value="year">Publication Year</option>
+          <option value="quarter">Fiscal Quarter</option>
+          <option value="academicRank">Academic Rank</option>
+          <option value="academicQualification">Academic Qualification</option>
+          <option value="authorship">Authorship</option>
+          <option value="status">Status</option>
+          <option value="indexedIn">Indexed In</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="chartType">Chart Type</label>
+        <select id="chartType">
+          <option value="bar">Bar</option>
+          <option value="pie">Pie</option>
+          <option value="doughnut">Doughnut</option>
+          <option value="line">Line</option>
+          <option value="polarArea">Polar Area</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="deptFilter">Filter by Department</label>
+        <select id="deptFilter"><option value="">All Departments</option></select>
+      </div>
+
+      <div>
+        <label for="quarterFilter">Filter by Quarter</label>
+        <select id="quarterFilter"><option value="">All Quarters</option></select>
+      </div>
+
+      <button id="refreshBtn" type="button">🔄 Refresh</button>
+      <button id="debugBtn"   type="button" class="debug-btn">🔍 Debug</button>
+    </div>
+
+    <div id="filterSummary" class="filter-summary"></div>
+
+    <div class="stats-cards">
+      <div class="stat-card">
+        <div class="stat-value" id="totalPubs">0</div>
+        <div class="stat-label">Total Publications</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="totalDepts">0</div>
+        <div class="stat-label">Departments Represented</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="totalStaff">0</div>
+        <div class="stat-label">Unique Staff</div>
+      </div>
+    </div>
+
+    <div class="chart-wrapper">
+      <canvas id="dashChart"></canvas>
+      <div id="emptyMsg" class="empty-msg" style="display:none;">Loading dashboard…</div>
+    </div>
+
+    <pre id="debugBox"></pre>
+  </div>
+
+</div>
+
+<script>
+/* ==========================================================
+   ⚙️ CONFIG — replace with your own deployment URL
+   ========================================================== */
+const GAS_URL = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
+
+/* ==========================================================
+   GLOBAL STATE
+   ========================================================== */
+let allPublications = [];
+let chartInstance   = null;
+
+/* ==========================================================
+   JSONP CLIENT
+   ========================================================== */
+function jsonpCall(action, params, onSuccess, onError) {
+  const callbackName = 'gasCb_' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+  const script = document.createElement('script');
+  let finished = false;
+
+  window[callbackName] = function (res) {
+    finished = true;
+    cleanup();
+    if (res && res.success === false) {
+      if (onError) onError(new Error(res.error || 'Unknown server error'));
+    } else if (res && res.success === true) {
+      onSuccess(res.data !== undefined ? res.data : res);
+    } else {
+      onSuccess(res); // fall-through for unexpected shapes
+    }
+  };
+
+  function cleanup() {
+    if (script.parentNode) script.parentNode.removeChild(script);
+    try { delete window[callbackName]; } catch (e) { window[callbackName] = undefined; }
+  }
+
+  script.onerror = function () {
+    if (finished) return;
+    finished = true;
+    cleanup();
+    if (onError) onError(new Error(
+      'Could not reach the backend. Check GAS_URL and make sure the GAS web app is deployed for "Anyone".'
+    ));
+  };
+
+  const qp = new URLSearchParams();
+  qp.set('action', action);
+  qp.set('callback', callbackName);
+  Object.keys(params || {}).forEach(function (k) {
+    if (params[k] !== undefined && params[k] !== null) {
+      qp.set(k, typeof params[k] === 'object' ? JSON.stringify(params[k]) : String(params[k]));
+    }
+  });
+
+  script.src = GAS_URL + '?' + qp.toString();
+  document.head.appendChild(script);
+
+  setTimeout(function () {
+    if (finished) return;
+    finished = true;
+    cleanup();
+    if (onError) onError(new Error('Request timed out after 30 seconds.'));
+  }, 30000);
+}
+
+/* ==========================================================
+   QUARTER HELPER
+   ========================================================== */
+function getFiscalQuarter(dateStr) {
+  if (!dateStr) return { label: 'Unknown', sortKey: '0000-Q0' };
+  const parts = String(dateStr).split('-');
+  if (parts.length !== 3) return { label: 'Unknown', sortKey: '0000-Q0' };
+
+  const y     = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  if (isNaN(y) || isNaN(month) || month < 0 || month > 11) {
+    return { label: 'Unknown', sortKey: '0000-Q0' };
+  }
+
+  let fyStart, quarter;
+  if (month >= 6 && month <= 8) {          fyStart = y;      quarter = 1; }
+  else if (month >= 9 && month <= 11) {    fyStart = y;      quarter = 2; }
+  else if (month >= 0 && month <= 2) {     fyStart = y - 1;  quarter = 3; }
+  else {                                   fyStart = y - 1;  quarter = 4; }
+
+  const fyEndShort = String((fyStart + 1) % 100).padStart(2, '0');
+  return {
+    label:   fyStart + '/' + fyEndShort + ' Q' + quarter,
+    sortKey: fyStart + '-Q' + quarter
+  };
+}
+
+/* ==========================================================
+   TABS
+   ========================================================== */
+document.querySelectorAll('.tab-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'dashboardTab') loadDashboard();
+  });
+});
+
+/* ==========================================================
+   ON PAGE LOAD
+   ========================================================== */
+window.addEventListener('load', function () {
+  document.getElementById('publicationDate').valueAsDate = new Date();
+
+  jsonpCall('getDropdownData', {}, populateDropdowns, function (err) {
+    document.getElementById('message').innerHTML =
+      '<span class="error">Error loading dropdowns: ' + err.message + '</span>';
+  });
+});
+
+/* ==========================================================
+   DROPDOWNS
+   ========================================================== */
+function populateDropdowns(data) {
+  fillSelect('department',            '-- Select Department --',    data.departments);
+  fillSelect('academicRank',          '-- Select Rank --',          data.ranks);
+  fillSelect('academicQualification', '-- Select Qualification --', data.qualifications);
+  fillSelect('authorship',            '-- Select Authorship --',    data.authorship);
+  fillSelect('indexedIn',             '-- Select Indexing --',      data.indexedIn);
+  fillSelect('status',                '-- Select Status --',        data.statuses);
+  fillSelect('deptFilter', 'All Departments', data.departments);
+}
+
+function fillSelect(id, placeholder, values) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = '<option value="">' + placeholder + '</option>';
+  (values || []).forEach(function (v) {
+    const o = document.createElement('option');
+    o.value = v;
+    o.textContent = v;
+    sel.appendChild(o);
+  });
+}
+
+/* ==========================================================
+   FORM SUBMIT
+   ========================================================== */
+document.getElementById('publicationForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const msg = document.getElementById('message');
+
+  const formData = {
+    department:            document.getElementById('department').value,
+    staffName:             document.getElementById('staffName').value.trim(),
+    academicRank:          document.getElementById('academicRank').value,
+    academicQualification: document.getElementById('academicQualification').value,
+    authorship:            document.getElementById('authorship').value,
+    publicationTitle:      document.getElementById('publicationTitle').value.trim(),
+    journal:               document.getElementById('journal').value.trim(),
+    publicationDate:       document.getElementById('publicationDate').value,
+    doiLink:               document.getElementById('doiLink').value.trim(),
+    indexedIn:             document.getElementById('indexedIn').value,
+    status:                document.getElementById('status').value,
+    remarks:               document.getElementById('remarks').value.trim()
+  };
+
+  const missing =
+      !formData.department || !formData.staffName || !formData.academicRank ||
+      !formData.academicQualification || !formData.authorship ||
+      !formData.publicationTitle || !formData.journal || !formData.publicationDate;
+
+  if (missing) {
+    msg.innerHTML = '<span class="error">Please fill in all required fields (*).</span>';
+    return;
+  }
+
+  const dataStr = JSON.stringify(formData);
+  if (dataStr.length > 4000) {
+    msg.innerHTML = '<span class="error">Form data is too large (max ~4000 chars). Please shorten Remarks.</span>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving...';
+  msg.innerHTML = '';
+
+  jsonpCall('savePublication', { data: dataStr }, function (res) {
+    msg.innerHTML = '<span class="success">' + (res && res.message ? res.message : 'Saved!') + '</span>';
+    document.getElementById('publicationForm').reset();
+    document.getElementById('publicationDate').valueAsDate = new Date();
+    btn.disabled = false;
+    btn.textContent = 'Submit Publication';
+  }, function (err) {
+    msg.innerHTML = '<span class="error">Error: ' + err.message + '</span>';
+    btn.disabled = false;
+    btn.textContent = 'Submit Publication';
+  });
+});
+
+/* ==========================================================
+   DASHBOARD CONTROLS
+   ========================================================== */
+document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
+document.getElementById('debugBtn').addEventListener('click', showDebug);
+document.getElementById('groupBy').addEventListener('change',        renderDashboard);
+document.getElementById('chartType').addEventListener('change',      renderDashboard);
+document.getElementById('deptFilter').addEventListener('change',     renderDashboard);
+document.getElementById('quarterFilter').addEventListener('change',  renderDashboard);
+
+function loadDashboard() {
+  const emptyMsg = document.getElementById('emptyMsg');
+  emptyMsg.style.display = 'block';
+  emptyMsg.textContent = 'Loading dashboard…';
+
+  jsonpCall('getPublicationsData', {}, function (data) {
+    allPublications = data || [];
+    populateQuarterFilter(allPublications);
+    renderDashboard();
+  }, function (err) {
+    emptyMsg.style.display = 'block';
+    emptyMsg.textContent = 'Error loading dashboard: ' + err.message +
+      ' — click 🔍 Debug for details.';
+  });
+}
+
+function populateQuarterFilter(pubs) {
+  const sel     = document.getElementById('quarterFilter');
+  const current = sel.value;
+
+  const map = {};
+  pubs.forEach(function (p) {
+    const q = getFiscalQuarter(p.publicationDate);
+    if (q.label !== 'Unknown') map[q.label] = q;
+  });
+
+  const sorted = Object.values(map)
+    .sort(function (a, b) { return a.sortKey.localeCompare(b.sortKey); });
+
+  sel.innerHTML = '<option value="">All Quarters</option>';
+  sorted.forEach(function (q) {
+    const o = document.createElement('option');
+    o.value = q.label;
+    o.textContent = q.label;
+    sel.appendChild(o);
+  });
+
+  if (current && map[current]) sel.value = current;
+}
+
+/* ==========================================================
+   RENDER
+   ========================================================== */
+function renderDashboard() {
+  const deptFilter    = document.getElementById('deptFilter').value;
+  const quarterFilter = document.getElementById('quarterFilter').value;
+  const groupBy       = document.getElementById('groupBy').value;
+
+  let filtered = allPublications;
+  if (deptFilter)    filtered = filtered.filter(function (p) { return p.department === deptFilter; });
+  if (quarterFilter) filtered = filtered.filter(function (p) {
+    return getFiscalQuarter(p.publicationDate).label === quarterFilter;
+  });
+
+  const pills = [];
+  if (deptFilter)    pills.push('🏛 ' + deptFilter);
+  if (quarterFilter) pills.push('📅 ' + quarterFilter);
+  document.getElementById('filterSummary').innerHTML =
+    pills.map(function (t) { return '<span class="filter-pill">' + t + '</span>'; }).join('');
+
+  document.getElementById('totalPubs').textContent  = filtered.length;
+  document.getElementById('totalDepts').textContent =
+      new Set(filtered.map(function (p) { return p.department; }).filter(Boolean)).size;
+  document.getElementById('totalStaff').textContent =
+      new Set(filtered.map(function (p) { return p.staffName; }).filter(Boolean)).size;
+
+  const canvas   = document.getElementById('dashChart');
+  const emptyMsg = document.getElementById('emptyMsg');
+  if (filtered.length === 0) {
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    canvas.style.display = 'none';
+    emptyMsg.style.display = 'block';
+    emptyMsg.textContent = 'No publications match the current filters.';
+    return;
+  }
+  canvas.style.display = 'block';
+  emptyMsg.style.display = 'none';
+
+  const buckets = {};
+  filtered.forEach(function (item) {
+    let label, sortKey;
+
+    if (groupBy === 'year') {
+      const y = item.publicationDate ? new Date(item.publicationDate).getFullYear() : NaN;
+      label   = (!isNaN(y) && y > 0) ? String(y) : 'Unknown';
+      sortKey = label;
+    } else if (groupBy === 'quarter') {
+      const q = getFiscalQuarter(item.publicationDate);
+      label   = q.label;
+      sortKey = q.sortKey;
+    } else {
+      label   = item[groupBy] || 'Not Specified';
+      sortKey = label;
+    }
+
+    if (!buckets[label]) buckets[label] = { label: label, sortKey: sortKey, count: 0 };
+    buckets[label].count++;
+  });
+
+  const sorted = Object.values(buckets)
+    .sort(function (a, b) { return a.sortKey.localeCompare(b.sortKey); });
+
+  const labels = sorted.map(function (b) { return b.label; });
+  const values = sorted.map(function (b) { return b.count; });
+
+  const chartType  = document.getElementById('chartType').value;
+  const isCircular = ['pie', 'doughnut', 'polarArea'].indexOf(chartType) !== -1;
+  const groupText  = document.getElementById('groupBy').selectedOptions[0].text;
+
+  const filterTextParts = [];
+  if (deptFilter)    filterTextParts.push(deptFilter);
+  if (quarterFilter) filterTextParts.push(quarterFilter);
+  const filterText = filterTextParts.length ? ' — ' + filterTextParts.join(' · ') : '';
+
+  const subtitle = (groupBy === 'quarter')
+      ? '  ·  (Q1 = Jul–Sep, Q2 = Oct–Dec, Q3 = Jan–Mar, Q4 = Apr–Jun)'
+      : '';
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: isCircular ? 'right' : 'top',
+        labels: { boxWidth: 14, font: { size: 12 } }
+      },
+      title: {
+        display: true,
+        text: 'Publications by ' + groupText + filterText + subtitle,
+        font: { size: 14, weight: 'bold' },
+        color: '#6a1b9a',
+        padding: { top: 4, bottom: 10 }
+      },
+      tooltip: {
+        callbacks: {
+          label: function (ctx) {
+            const v = ctx.parsed.y !== undefined ? ctx.parsed.y : ctx.parsed;
+            return ' ' + ctx.label + ': ' + v + ' publication' + (v === 1 ? '' : 's');
+          }
+        }
+      }
+    }
+  };
+  if (!isCircular) {
+    options.scales = {
+      y: { beginAtZero: true, ticks: { precision: 0 } },
+      x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } }
+    };
+  }
+
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(canvas.getContext('2d'), {
+    type: chartType,
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Publications',
+        data: values,
+        backgroundColor: palette(labels.length),
+        borderColor: '#fff',
+        borderWidth: 2,
+        fill: chartType === 'line' ? false : true,
+        tension: 0.3
+      }]
+    },
+    options: options
+  });
+}
+
+function palette(n) {
+  const p = [
+    '#6a1b9a','#8e24aa','#ab47bc','#ba68c8','#ce93d8','#7b1fa2',
+    '#4a148c','#9c27b0','#e1bee7','#9575cd','#7986cb','#b39ddb',
+    '#5e35b1','#673ab7','#d1c4e9','#7e57c2','#b39ddb','#ce93d8'
+  ];
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(p[i % p.length]);
+  return out;
+}
+
+/* ==========================================================
+   DEBUG
+   ========================================================== */
+function showDebug() {
+  const box = document.getElementById('debugBox');
+  box.style.display = 'block';
+  box.textContent = 'Running debug…';
+
+  jsonpCall('debugSheetStructure', {}, function (info) {
+    let txt = 'GAS_URL: ' + GAS_URL + '\n';
+    txt += 'Spreadsheet ID: ' + info.spreadsheetId + '\n';
+    txt += 'Sheets found: ' + info.sheets.map(function (s) {
+      return s.name + ' (' + s.rows + ' rows × ' + s.cols + ' cols)';
+    }).join(' | ') + '\n';
+    txt += 'Active sheet used: "' + info.activeSheet + '"' +
+           (info.usedFallback ? '  ⚠ FALLBACK' : '  ✓') + '\n';
+    txt += 'Total rows (incl. header): ' + info.totalRows + '\n';
+    txt += 'Header row detected: ' + (info.headersLookValid ? 'YES ✓' : 'NO ⚠') + '\n';
+    txt += 'Header row: ' + JSON.stringify(info.headerRow) + '\n';
+    txt += 'Column count: ' + info.headerRow.length + '  (expected 13: A–M)\n';
+    txt += 'First 5 data rows:\n';
+    info.sampleRows.forEach(function (row, i) {
+      txt += '  [' + (i + 1) + '] ' + JSON.stringify(row) + '\n';
+    });
+    box.textContent = txt;
+  }, function (err) {
+    box.textContent = 'Debug failed: ' + err.message;
+  });
+}
+</script>
+</body>
+</html>
